@@ -3,6 +3,8 @@ export interface SearchResult {
   artist: string;
   url: string;
   cover: string | null;
+  trackCount?: number | null;
+  service?: string | null;
 }
 
 export interface DownloadJob {
@@ -16,6 +18,11 @@ export interface DownloadJob {
   startedAt: number | null;
   finishedAt: number | null;
   error?: string | null;
+  trackInfo?: {
+    current: number;
+    total: number;
+    name: string;
+  } | null;
   result?: {
     success: boolean;
     albumPath: string;

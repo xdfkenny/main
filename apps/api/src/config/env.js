@@ -24,6 +24,7 @@ export const env = {
   deezerArl: process.env.DEEZER_ARL ?? "",
   qobuzAppId: process.env.QOBUZ_APP_ID ?? "",
   qobuzAppSecret: process.env.QOBUZ_APP_SECRET ?? "",
+  yandexMusicToken: process.env.YANDEX_MUSIC_TOKEN ?? "",
 };
 
 export const isDev = env.nodeEnv !== "production";

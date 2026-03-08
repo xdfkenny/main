@@ -20,9 +20,29 @@ function getTrackStem(track, trackNumber, trackCount, groupedSingle) {
   return `${number}${artistPrefix}${sanitizeFileName(track.title)}`;
 }
 
+function looksLikeHtml(value) {
+  if (typeof value === 'string') return value.trimStart().startsWith('<');
+  // Detects a string spread into an object like {"0":"<","1":"h",...}
+  if (typeof value === 'object' && value !== null && '0' in value && '1' in value) {
+    const joined = Object.values(value).join('');
+    return joined.trimStart().startsWith('<');
+  }
+  return false;
+}
+
 function mapInfoToAlbum(info, token) {
   if (!info) {
     throw new Error("Metadata info is missing from Lucida payload");
+  }
+
+  // Guard: if info is actually HTML masquerading as an object, bail with a clear message
+  if (looksLikeHtml(info)) {
+    throw new Error(
+      "Lucida returned an HTML page instead of track/album metadata. " +
+      "This usually means the Lucida service is temporarily unavailable, " +
+      "the URL is invalid, or the service requires authentication. " +
+      "Please try again later or check that the URL is correct."
+    );
   }
 
   if (info.type === "album") {
@@ -53,7 +73,11 @@ function mapInfoToAlbum(info, token) {
     };
   }
 
-  throw new Error(`Unsupported payload type: ${info.type} (Full info: ${JSON.stringify(info).slice(0, 100)}...)`);
+  throw new Error(
+    `Unsupported payload type: ${info.type ?? '(missing)'}. ` +
+    `Info keys: [${Object.keys(info).join(', ')}]. ` +
+    `This may indicate the Lucida API response format has changed.`
+  );
 }
 
 export class LucidaDownloader {
@@ -107,10 +131,60 @@ export class LucidaDownloader {
     await this.guardControl();
     this.progress(5, "Resolving album metadata");
     const html = await this.client.resolveItemPage(url, this.options.country);
-    const pageData = this.client.parsePageData(html);
+
+    if (!html || typeof html !== 'string') {
+      // Lucida may return JSON instead of HTML in some error scenarios
+      if (html && typeof html === 'object') {
+        if (html.error) throw new Error(`Lucida API error: ${html.error}`);
+        console.error("[LucidaDownloader] Got object instead of HTML:", JSON.stringify(html).slice(0, 300));
+        throw new Error("Lucida returned an unexpected response format (object instead of HTML page)");
+      }
+      throw new Error("Empty or invalid response from Lucida");
+    }
+
+    // Check if the response is an error page or Cloudflare challenge
+    if (html.includes('cf-browser-verification') || html.includes('challenge-platform')) {
+      throw new Error("Lucida is behind a Cloudflare challenge. The service may be experiencing issues or blocking automated requests.");
+    }
+
+    let pageData;
+    try {
+      pageData = this.client.parsePageData(html);
+    } catch (parseErr) {
+      console.error("[LucidaDownloader] Failed to parse page data:", parseErr.message);
+      console.error("[LucidaDownloader] HTML preview:", html.slice(0, 500));
+      throw parseErr;
+    }
+
+    if (!pageData || typeof pageData !== 'object') {
+      throw new Error("parsePageData returned invalid result");
+    }
+
+    // info may come back as a JSON string — parse it if so
+    if (typeof pageData.info === 'string') {
+      // Check if it's HTML instead of JSON
+      if (pageData.info.trimStart().startsWith('<')) {
+        console.error("[LucidaDownloader] pageData.info is HTML, not JSON:", pageData.info.slice(0, 200));
+        throw new Error(
+          "Lucida returned an HTML page instead of metadata. " +
+          "The service may be temporarily unavailable or the URL may be invalid."
+        );
+      }
+      try {
+        pageData.info = JSON.parse(pageData.info);
+      } catch {
+        console.error("[LucidaDownloader] pageData.info is a string but not valid JSON:", pageData.info.slice(0, 200));
+        throw new Error("Lucida returned invalid metadata (string instead of object). The URL may be unsupported.");
+      }
+    }
 
     if (pageData.info && pageData.info.success === false) {
       throw new Error(pageData.info.error || "Failed to resolve metadata from Lucida");
+    }
+
+    if (!pageData.info || typeof pageData.info !== 'object') {
+      console.error("[LucidaDownloader] pageData.info is missing or not an object. Keys:", Object.keys(pageData));
+      throw new Error("Lucida response missing metadata info. The URL may be invalid or the service may be down.");
     }
 
     try {
@@ -119,7 +193,10 @@ export class LucidaDownloader {
       return { album, groupedSingle, pageData };
     } catch (err) {
       console.error("Metadata mapping failed. PageData keys:", Object.keys(pageData));
-      if (pageData.info) console.error("Info keys:", Object.keys(pageData.info));
+      if (pageData.info) {
+        console.error("Info type:", typeof pageData.info, "| Info keys:", Object.keys(pageData.info));
+        console.error("Info preview:", JSON.stringify(pageData.info).slice(0, 300));
+      }
       throw err;
     }
   }

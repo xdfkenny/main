@@ -6,6 +6,7 @@ import SoundCloud from 'lucida/streamers/soundcloud/main.js';
 import Tidal from 'lucida/streamers/tidal/main.js';
 import Deezer from 'lucida/streamers/deezer/main.js';
 import Qobuz from 'lucida/streamers/qobuz/main.js';
+import Yandex from 'lucida-module-yandex';
 import { env } from '../config/env.js';
 import { embedCoverArt } from '../utils/metadata-utils.js';
 
@@ -31,6 +32,9 @@ export class BakaScraper {
         qobuz: new Qobuz({
           appId: env.qobuzAppId || undefined,
           appSecret: env.qobuzAppSecret || undefined
+        }),
+        yandex: new Yandex({
+          token: env.yandexMusicToken || undefined
         })
       }
     });
@@ -80,6 +84,7 @@ export class BakaScraper {
             artist: track.name || (track.artists && track.artists[0] ? track.artists[0].name : 'Unknown Artist'),
             album: track.album?.title || '',
             durationMs: track.duration ? track.duration * 1000 : track.durationMs || null,
+            trackCount: track.album?.track_count || track.album?.trackCount || track.trackCount || null,
             cover: coverUrl,
             service: svc,
             url: track.url,

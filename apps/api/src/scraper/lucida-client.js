@@ -35,19 +35,38 @@ export class LucidaClient {
   }
 
   parsePageData(html) {
-    const startMarker = 'const data = [';
-    const startIdx = html.indexOf(startMarker);
-    if (startIdx === -1) {
-      throw new Error("Unable to find Lucida data block");
+    if (!html || typeof html !== 'string') {
+      throw new Error("Invalid HTML response received from Lucida");
     }
 
-    const endMarker = '];';
-    const endIdx = html.indexOf(endMarker, startIdx);
-    if (endIdx === -1) {
-      throw new Error("Unable to find end of Lucida data block");
+    // Try multiple marker patterns that Lucida may use
+    const markers = [
+      { start: 'const data = [', prefix: 'const data = ' },
+      { start: 'var data = [', prefix: 'var data = ' },
+      { start: 'let data = [', prefix: 'let data = ' },
+      { start: 'window.__DATA__ = [', prefix: 'window.__DATA__ = ' },
+      { start: 'window.data = [', prefix: 'window.data = ' },
+      { start: 'window.__NUXT__ = [', prefix: 'window.__NUXT__ = ' },
+    ];
+
+    let raw = null;
+    for (const { start, prefix } of markers) {
+      const startIdx = html.indexOf(start);
+      if (startIdx === -1) continue;
+
+      const endIdx = html.indexOf('];', startIdx);
+      if (endIdx === -1) continue;
+
+      raw = html.slice(startIdx + prefix.length, endIdx + 1);
+      break;
     }
 
-    const raw = html.slice(startIdx + 'const data = '.length, endIdx + 1);
+    if (!raw) {
+      const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+      const pageTitle = titleMatch ? titleMatch[1] : 'unknown';
+      throw new Error(`Unable to find Lucida data block in page (title: "${pageTitle}"). The site structure may have changed.`);
+    }
+
     let data;
     try {
       data = JSON5.parse(raw);
@@ -66,7 +85,19 @@ export class LucidaClient {
       }
     }
 
-    throw new Error("No metadata found in Lucida data block");
+    // Fallback: check if any item directly has info
+    for (const item of data) {
+      if (item.info) {
+        return item;
+      }
+    }
+
+    // Fallback: if data[0] has type/title fields, treat it as info directly
+    if (data.length > 0 && data[0] && (data[0].type === 'album' || data[0].type === 'track')) {
+      return { info: data[0], token: null };
+    }
+
+    throw new Error(`No metadata found in Lucida data block. Data keys: ${data.map(d => JSON.stringify(Object.keys(d || {}))).join(', ')}`);
   }
 
   async requestTrackHandoff({ country, metadata, isPrivate, tokenExpiry, csrf, csrfFallback, url }) {

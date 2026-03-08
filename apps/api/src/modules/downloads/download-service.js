@@ -20,6 +20,33 @@ function normalizeOptions(options = {}) {
   };
 }
 
+/**
+ * Normalize streaming service URLs to their canonical form.
+ * Many services have multiple URL variants (www, http, listen.*, etc.)
+ * but Lucida may only recognize the canonical form.
+ */
+function normalizeServiceUrl(url) {
+  if (!url) return url;
+  let normalized = url.trim();
+
+  // Ensure https
+  normalized = normalized.replace(/^http:\/\//i, 'https://');
+
+  // Tidal: normalize www.tidal.com and listen.tidal.com to tidal.com
+  normalized = normalized.replace(/^https:\/\/(?:www\.|listen\.)?tidal\.com/i, 'https://tidal.com');
+
+  // Deezer: normalize www.deezer.com to deezer.com
+  normalized = normalized.replace(/^https:\/\/www\.deezer\.com/i, 'https://deezer.com');
+
+  // Soundcloud: normalize www.soundcloud.com to soundcloud.com
+  normalized = normalized.replace(/^https:\/\/www\.soundcloud\.com/i, 'https://soundcloud.com');
+
+  // Qobuz: normalize www variants
+  normalized = normalized.replace(/^https:\/\/www\.(open\.qobuz\.com)/i, 'https://$1');
+
+  return normalized;
+}
+
 export class DownloadService {
   constructor({ consoleService } = {}) {
     fs.ensureDirSync(env.downloadsDir);
@@ -35,7 +62,7 @@ export class DownloadService {
   }
 
   startDownload({ url, options }) {
-    let normalizedUrl = url?.trim() || "";
+    let normalizedUrl = normalizeServiceUrl(url);
     if (normalizedUrl && !normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
       normalizedUrl = `https://${normalizedUrl}`;
     }
@@ -100,7 +127,17 @@ export class DownloadService {
           ...options,
           outputPath: env.downloadsDir,
           progress: (progress, message) => {
-            updateJob(id, { progress, message });
+            // Extract track info from message like "Downloading track 1/2: Track Name"
+            const trackMatch = message.match(/track (\d+)\/(\d+):\s*(.+?)(?:\s*\(|$)/i);
+            const jobPatch = { progress, message };
+            if (trackMatch) {
+              jobPatch.trackInfo = {
+                current: parseInt(trackMatch[1], 10),
+                total: parseInt(trackMatch[2], 10),
+                name: trackMatch[3].trim(),
+              };
+            }
+            updateJob(id, jobPatch);
             const now = Date.now();
             const last = this.progressThrottle.get(id) ?? 0;
             if (now - last > 1000 || progress >= 100) {

@@ -46,6 +46,8 @@ export class LucidaClient {
       { start: 'var data = [', prefix: 'var data = ' },
       { start: 'let data = [', prefix: 'let data = ' },
       { start: 'window.__DATA__ = [', prefix: 'window.__DATA__ = ' },
+      { start: 'window.data = [', prefix: 'window.data = ' },
+      { start: 'window.__NUXT__ = [', prefix: 'window.__NUXT__ = ' },
     ];
 
     let raw = null;

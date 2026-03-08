@@ -14,6 +14,27 @@
     <!-- URL -->
     <div class="job-url">{{ truncateUrl(job.url) }}</div>
 
+    <!-- Track info -->
+    <div v-if="job.trackInfo" class="track-info-row">
+      <div class="track-counter">
+        <span class="track-counter-current">{{ job.trackInfo.current }}</span>
+        <span class="track-counter-sep">/</span>
+        <span class="track-counter-total">{{ job.trackInfo.total }}</span>
+      </div>
+      <div class="track-name">{{ job.trackInfo.name }}</div>
+      <div class="track-dots">
+        <span
+          v-for="i in job.trackInfo.total"
+          :key="i"
+          class="track-dot"
+          :class="{
+            done: i < job.trackInfo.current,
+            active: i === job.trackInfo.current,
+          }"
+        />
+      </div>
+    </div>
+
     <!-- Progress bar -->
     <div class="progress-bar">
       <div class="progress-bar-fill" :style="{ width: job.progress + '%' }" />
@@ -186,4 +207,69 @@ function truncateUrl(url: string) {
 .act-btn:hover { background: rgba(79,124,255,0.12); color: var(--text); border-color: rgba(79,124,255,0.3); }
 .act-btn.retry:hover { color: #fbbf24; border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.08); }
 .act-btn.cancel:hover { color: #fca5a5; border-color: rgba(252,165,165,0.3); background: rgba(252,165,165,0.08); }
+
+/* Track info */
+.track-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(79,124,255,0.05);
+  border: 1px solid rgba(79,124,255,0.12);
+  border-radius: 8px;
+}
+
+.track-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.track-counter-current { color: var(--accent-2, #818cf8); }
+.track-counter-sep { color: var(--muted); font-weight: 400; }
+.track-counter-total { color: var(--muted); font-weight: 400; }
+
+.track-name {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-dots {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.track-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(199,210,254,0.1);
+  transition: all 0.3s ease;
+}
+
+.track-dot.done {
+  background: rgba(79,124,255,0.6);
+  box-shadow: 0 0 4px rgba(79,124,255,0.3);
+}
+
+.track-dot.active {
+  background: var(--accent-2, #818cf8);
+  box-shadow: 0 0 6px rgba(129,140,248,0.5);
+  animation: dotPulse 1.2s ease infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
 </style>

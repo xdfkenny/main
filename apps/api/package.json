@@ -17,6 +17,7 @@
     "fs-extra": "^11.3.0",
     "json5": "^2.2.3",
     "lucida": "^2.0.0-54",
+    "lucida-module-yandex": "^0.15.1",
     "pino": "^9.7.0"
   }
 }

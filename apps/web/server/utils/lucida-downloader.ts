@@ -126,12 +126,22 @@ export class LucidaDownloader {
       throw new Error("parsePageData returned invalid result");
     }
 
+    // info may come back as a JSON string — parse it if so
+    if (typeof pageData.info === 'string') {
+      try {
+        pageData.info = JSON.parse(pageData.info);
+      } catch {
+        console.error("[LucidaDownloader] pageData.info is a string but not valid JSON:", pageData.info.slice(0, 200));
+        throw new Error("Lucida returned invalid metadata (string instead of object). The URL may be unsupported.");
+      }
+    }
+
     if (pageData.info && pageData.info.success === false) {
       throw new Error(pageData.info.error || "Failed to resolve metadata from Lucida");
     }
 
-    if (!pageData.info) {
-      console.error("[LucidaDownloader] pageData has no 'info' key. Keys:", Object.keys(pageData));
+    if (!pageData.info || typeof pageData.info !== 'object') {
+      console.error("[LucidaDownloader] pageData.info is missing or not an object. Keys:", Object.keys(pageData));
       throw new Error("Lucida response missing metadata info. The URL may be invalid or the service may be down.");
     }
 
@@ -141,7 +151,7 @@ export class LucidaDownloader {
       return { album, groupedSingle, pageData };
     } catch (err) {
       console.error("Metadata mapping failed. PageData keys:", Object.keys(pageData));
-      if (pageData.info) console.error("Info keys:", Object.keys(pageData.info));
+      if (pageData.info) console.error("Info type:", typeof pageData.info, "| Info keys:", Object.keys(pageData.info));
       throw err;
     }
   }

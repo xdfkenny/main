@@ -81,6 +81,7 @@ export class BakaScraper {
             artist: track.name || (track.artists && track.artists[0] ? track.artists[0].name : 'Unknown Artist'),
             album: track.album?.title || '',
             durationMs: track.duration ? track.duration * 1000 : track.durationMs || null,
+            trackCount: track.album?.track_count || track.album?.trackCount || track.trackCount || null,
             cover: coverUrl,
             service: svc,
             url: track.url,

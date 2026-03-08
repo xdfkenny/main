@@ -29,12 +29,18 @@
           </button>
         </div>
       </div>
+      <!-- Track count badge -->
+      <div v-if="item.trackCount" class="track-count-badge">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        {{ item.trackCount }} tracks
+      </div>
     </div>
 
     <!-- Info -->
     <div class="card-info" @click="emit('inspect', item)">
       <div class="card-title" :title="item.title">{{ item.title }}</div>
       <div class="card-artist">{{ item.artist }}</div>
+      <div v-if="item.service" class="card-service">{{ item.service }}</div>
     </div>
   </article>
 </template>
@@ -165,5 +171,32 @@ const coverError = ref(false);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.card-service {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-2, #818cf8);
+  opacity: 0.7;
+}
+
+.track-count-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(7,11,20,0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(199,210,254,0.15);
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
 }
 </style>
